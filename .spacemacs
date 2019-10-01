@@ -33,34 +33,72 @@ This function should only modify configuration layer settings."
 
    ;; List of configuration layers to load.
    dotspacemacs-configuration-layers
-   '(yaml
-     python
+   '(html
+     csv
      ;; ----------------------------------------------------------------
      ;; Example of useful layers you may want to use right away.
      ;; Uncomment some layer names and press <SPC f e R> (Vim style) or
      ;; <M-m f e R> (Emacs style) to install them.
      ;; ----------------------------------------------------------------
+     auto-completion
+     lsp
      (c-c++ :variables
             c-c++-default-mode-for-headers 'c++-mode
             c-c++-backend 'lsp-ccls
+            ;; c-c++-lsp-executable (file-truename "~/Documents/ccls/build/ccls")
+            ;; c-c++-lsp-executable (file-truename "/usr/local/Cellar/ccls/0.20190314/bin/ccls")
             c-c++-lsp-sem-highlight-method 'overlay
             c-c++-lsp-sem-highlight-rainbow t
             )
-     helm
-     auto-completion
-     ;; better-defaults
+     dap
+     ess
+     floobits
+     cmake
      emacs-lisp
      git
      github
-     ;; markdown
-     ;; org
+     helm
+     import-js
+     (javascript :variables
+                 javascript-import-tool 'import-js
+                 javascript-backend 'tern
+                 javascript-fmt-tool 'web-beautify
+                 js2-basic-offset 4
+                 js-indent-level 4
+                 javascript-repl 'skewer
+                 )
+     json
+     prettier
+     protobuf
+     ;; (python :variables
+     ;;         python-backend 'lsp
+     ;;         python-pipenv-activate t)
+     (python :variables
+             python-backend 'lsp
+             python-tab-width 4
+             python-fill-column 99
+             python-formatter 'yapf
+             python-format-on-save t
+             python-sort-imports-on-save t
+             )
      (shell :variables
             shell-default-shell 'ansi-term
             shell-default-height 30
-            shell-default-position 'bottom)
-     protobuf
-     ;; spell-checking
-     ;; syntax-checking
+            shell-default-position 'bottom
+            )
+     sql
+     tern
+     themes-megapack
+     theming
+     web-beautify
+     yaml
+     ;; better-defaults
+     ;; markdown
+     (org :variables
+          org-startup-truncated nil
+          )
+     spell-checking
+     syntax-checking
      ;; version-control
      )
 
@@ -71,7 +109,10 @@ This function should only modify configuration layer settings."
    ;; To use a local version of a package, use the `:location' property:
    ;; '(your-package :location "~/path/to/your-package/")
    ;; Also include the dependencies as they will not be resolved automatically.
-   dotspacemacs-additional-packages '()
+   dotspacemacs-additional-packages
+   '(
+     ssh-agency
+     )
 
    ;; A list of packages that cannot be updated.
    dotspacemacs-frozen-packages '()
@@ -213,7 +254,7 @@ It should only modify the values of Spacemacs settings."
    ;; Default font, or prioritized list of fonts. `powerline-scale' allows to
    ;; quickly tweak the mode-line size to make separators look not too crappy.
    dotspacemacs-default-font '("Source Code Pro"
-                               :size 13
+                               :size 11
                                :weight normal
                                :width normal)
 
@@ -355,7 +396,7 @@ It should only modify the values of Spacemacs settings."
    ;;                       text-mode
    ;;   :size-limit-kb 1000)
    ;; (default nil)
-   dotspacemacs-line-numbers t
+   dotspacemacs-line-numbers nil
 
    ;; Code folding method. Possible values are `evil' and `origami'.
    ;; (default 'evil)
@@ -448,6 +489,7 @@ This function is called immediately after `dotspacemacs/init', before layer
 configuration.
 It is mostly for variables that should be set before packages are loaded.
 If you are unsure, try setting them in `dotspacemacs/user-config' first."
+  (setq tramp-remote-path '(tramp-own-remote-path))
   )
 
 (defun dotspacemacs/user-load ()
@@ -470,8 +512,53 @@ you should place your code here."
   (add-to-list 'auto-mode-alist '("\\.cl$" . c++-mode))
   (add-to-list 'auto-mode-alist '("\\.cu$" . c++-mode))
   (add-to-list 'auto-mode-alist '("\\.cuh$" . c++-mode))
-  (put 'helm-make-build-dir 'safe-local-variable 'stringp)
+  (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
+  ;; (require 'lsp-mode)
+  ;; (lsp-register-client
+  ;;  (make-lsp-client
+  ;;   :new-connection (lsp-tramp-connection "/ssh:mark@24.98.114.4:/home/mark/Documents/ccls/build/ccls")
+  ;;   ;; :new-connection (lsp-stdio-connection (lambda () (cons ccls-executable ccls-args)))
+  ;;   :major-modes '(c-mode c++-mode cuda-mode objc-mode)
+  ;;   :remote? t
+  ;;   :server-id 'ccls
+  ;;   :multi-root nil
+  ;;   :notification-handlers
+  ;;   (lsp-ht ("$ccls/publishSkippedRanges" #'ccls--publish-skipped-ranges)
+  ;;           ("$ccls/publishSemanticHighlight" #'ccls--publish-semantic-highlight))
+  ;;   :initialization-options (lambda () ccls-initialization-options)
+  ;;   :library-folders-fn nil))
+  ;; (provide 'ccls)
+  ;; (lsp-register-client
+  ;;  (make-lsp-client :new-connection (lsp-tramp-connection "mark@24.98.114.4:/home/mark/Documents/ccls/build/ccls")
+  ;;  ;; (make-lsp-client :new-connection (lsp-tramp-connection "/Users/mark-poscablo/Documents/ccls/build/ccls")
+  ;;                   :major-modes '(c-mode c++-mode)
+  ;;                   :remote? t
+  ;;                   :server-id 'ccls
+  ;;  )
+  ;; )
+  (add-hook 'prog-mode-hook #'lsp)
+  (setq ccls-executable "/usr/local/Cellar/ccls/0.20190314/bin/ccls")
+  (defun pyenv-venv-wrapper-act (&optional ARG PRED)
+    (setenv "VIRTUAL_ENV" (shell-command-to-string "_pyenv_virtualenv_hook; echo -n $VIRTUAL_ENV")))
+  (advice-add 'pyenv-mode-set :after 'pyenv-venv-wrapper-act)
+  (defun pyenv-venv-wrapper-deact (&optional ARG PRED)
+    (setenv "VIRTUAL_ENV"))
+  (advice-add 'pyenv-mode-unset :after 'pyenv-venv-wrapper-deact)(put 'helm-make-build-dir 'safe-local-variable 'stringp)
   (ido-mode -1)
+  (with-eval-after-load 'git-gutter+
+    (defun git-gutter+-remote-default-directory (dir file)
+      (let* ((vec (tramp-dissect-file-name file))
+             (method (tramp-file-name-method vec))
+             (user (tramp-file-name-user vec))
+             (domain (tramp-file-name-domain vec))
+             (host (tramp-file-name-host vec))
+             (port (tramp-file-name-port vec)))
+        (tramp-make-tramp-file-name method user domain host port dir)))
+
+    (defun git-gutter+-remote-file-path (dir file)
+      (let ((file (tramp-file-name-localname (tramp-dissect-file-name file))))
+        (replace-regexp-in-string (concat "\\`" dir) "" file))))
+  (setenv "PATH" (concat (getenv "PATH") ":/Library/TeX/texbin"))
   )
 
 ;; Do not write anything past this comment. This is where Emacs will
@@ -501,10 +588,14 @@ This function is called at the very end of Spacemacs initialization."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(custom-enabled-themes (quote (spacemacs-dark)))
+ '(custom-safe-themes
+   (quote
+    ("628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d" "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016" "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a" "6b289bab28a7e511f9c54496be647dc60f5bd8f9917c9495978762b99d8c96a0" "58c6711a3b568437bab07a30385d34aacf64156cc5137ea20e799984f4227265" "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e" "ab98c7f7a58add58293ac67bec05ae163b5d3f35cddf18753b2b073c3fcd8841" "8aca557e9a17174d8f847fb02870cb2bb67f3b6e808e46c0e54a44e3e18e1020" "4697a2d4afca3f5ed4fdf5f715e36a6cac5c6154e105f3596b44a4874ae52c45" "d2e9c7e31e574bf38f4b0fb927aaff20c1e5f92f72001102758005e53d77b8c9" "93a0885d5f46d2aeac12bf6be1754faa7d5e28b27926b8aa812840fe7d0b7983" "f0dc4ddca147f3c7b1c7397141b888562a48d9888f1595d69572db73be99a024" "6d589ac0e52375d311afaa745205abb6ccb3b21f6ba037104d71111e7e76a3fc" "100e7c5956d7bb3fd0eebff57fde6de8f3b9fafa056a2519f169f85199cc1c96" "274fa62b00d732d093fc3f120aca1b31a6bb484492f31081c1814a858e25c72e" "725a0ac226fc6a7372074c8924c18394448bb011916c05a87518ad4563738668" "88049c35e4a6cedd4437ff6b093230b687d8a1fb65408ef17bfcf9b7338734f6" "1436d643b98844555d56c59c74004eb158dc85fc55d2e7205f8d9b8c860e177f" "bd7b7c5df1174796deefce5debc2d976b264585d51852c962362be83932873d9" "2bd119a80165cffae7c52af79a44eb30d8b0677d97b0e53102a490fa11f397ac" "bffa9739ce0752a37d9b1eee78fc00ba159748f50dc328af4be661484848e476" default)))
  '(evil-want-Y-yank-to-eol nil)
  '(package-selected-packages
    (quote
-    (protobuf-mode treepy graphql yapfify pyvenv pytest pyenv-mode py-isort pip-requirements live-py-mode hy-mode dash-functional helm-pydoc cython-mode company-anaconda anaconda-mode pythonic flycheck-pos-tip pos-tip flycheck xterm-color shell-pop multi-term eshell-z eshell-prompt-extras esh-help magit-gh-pulls github-search github-clone github-browse-file gist gh marshal logito pcache ht helm-company helm-c-yasnippet fuzzy company-statistics company-c-headers company auto-yasnippet yasnippet ac-ispell auto-complete smeargle orgit magit-gitflow helm-gitignore gitignore-mode gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link evil-magit magit magit-popup git-commit ghub let-alist with-editor disaster cmake-mode clang-format ws-butler winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint indent-guide hydra hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation helm-themes helm-swoop helm-projectile helm-mode-manager helm-make projectile pkg-info epl helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state smartparens evil-indent-plus evil-iedit-state iedit evil-exchange evil-escape evil-ediff evil-args evil-anzu anzu evil goto-chg undo-tree eval-sexp-fu highlight elisp-slime-nav dumb-jump f dash s diminish define-word column-enforce-mode clean-aindent-mode bind-map bind-key auto-highlight-symbol auto-compile packed aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line helm avy helm-core popup async))))
+    (import-js grizzl treepy graphql yapfify pyvenv pytest pyenv-mode py-isort pip-requirements live-py-mode hy-mode dash-functional helm-pydoc cython-mode company-anaconda anaconda-mode pythonic flycheck-pos-tip pos-tip flycheck xterm-color shell-pop multi-term eshell-z eshell-prompt-extras esh-help magit-gh-pulls github-search github-clone github-browse-file gist gh marshal logito pcache ht helm-company helm-c-yasnippet fuzzy company-statistics company-c-headers company auto-yasnippet yasnippet ac-ispell auto-complete smeargle orgit magit-gitflow helm-gitignore gitignore-mode gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link evil-magit magit magit-popup git-commit ghub let-alist with-editor disaster cmake-mode clang-format ws-butler winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint indent-guide hydra hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation helm-themes helm-swoop helm-projectile helm-mode-manager helm-make projectile pkg-info epl helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state smartparens evil-indent-plus evil-iedit-state iedit evil-exchange evil-escape evil-ediff evil-args evil-anzu anzu evil goto-chg undo-tree eval-sexp-fu highlight elisp-slime-nav dumb-jump f dash s diminish define-word column-enforce-mode clean-aindent-mode bind-map bind-key auto-highlight-symbol auto-compile packed aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line helm avy helm-core popup async))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
